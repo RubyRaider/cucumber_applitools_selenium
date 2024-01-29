@@ -1,0 +1,30 @@
+# frozen_string_literal: true
+
+require 'tmpdir'
+require_relative '../../helpers/allure_helper'
+require_relative '../../helpers/driver_helper'
+require_relative '../../helpers/visual_helper'
+
+include DriverHelper
+include VisualHelper
+
+Before do
+  OpenSSL::SSL::VERIFY_PEER = OpenSSL::SSL::VERIFY_NONE
+  @grid_runner = VisualHelper.create_grid_runner
+  @eyes = VisualHelper.create_eyes(@grid_runner)
+  VisualHelper.configure_eyes @eyes
+  @driver = @eyes.open(driver: driver)
+end
+
+After do |scenario|
+  Dir.mktmpdir do |temp_folder|
+    screenshot = driver.save_screenshot("#{temp_folder}/#{scenario.name}.png")
+    AllureHelper.add_screenshot(scenario.name, screenshot)
+  end
+  @eyes.close
+  @driver.quit
+  @eyes.abort_async
+  results = @grid_runner.get_all_test_results
+  puts results
+end
+
